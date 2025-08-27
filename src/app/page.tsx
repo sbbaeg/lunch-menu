@@ -4,12 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-declare global {
-  interface Window {
-    naver: any;
-  }
-}
-
 interface Recommendation {
   title: string;
   category: string;
@@ -20,10 +14,10 @@ interface Recommendation {
 
 export default function Home() {
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
-  const [map, setMap] = useState<any>(null);
-  const [marker, setMarker] = useState<any>(null);
+  const [map, setMap] = useState<naver.maps.Map | null>(null);
+  const [marker, setMarker] = useState<naver.maps.Marker | null>(null);
   const [loading, setLoading] = useState(false);
-  const mapElement = useRef(null);
+  const mapElement = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const script = document.createElement('script');
@@ -33,11 +27,11 @@ export default function Home() {
 
     script.onload = () => {
       if (mapElement.current) {
-        const mapOptions = {
-          center: new window.naver.maps.LatLng(37.3595704, 127.105399),
+        const mapOptions: naver.maps.MapOptions = {
+          center: new naver.maps.LatLng(37.3595704, 127.105399),
           zoom: 15,
         };
-        const mapInstance = new window.naver.maps.Map(mapElement.current, mapOptions);
+        const mapInstance = new naver.maps.Map(mapElement.current, mapOptions);
         setMap(mapInstance);
       }
     };
@@ -56,9 +50,9 @@ export default function Home() {
         if (response.ok) {
           setRecommendation(data);
           if (map) {
-            const recommendedLatLng = new window.naver.maps.LatLng(data.mapy, data.mapx);
+            const recommendedLatLng = new naver.maps.LatLng(data.mapy, data.mapx);
             map.setCenter(recommendedLatLng);
-            const newMarker = new window.naver.maps.Marker({
+            const newMarker = new naver.maps.Marker({
               position: recommendedLatLng,
               map: map,
             });
