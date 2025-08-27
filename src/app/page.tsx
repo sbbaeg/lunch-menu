@@ -4,108 +4,105 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+// 추천 결과 데이터의 타입을 정의합니다.
 interface Recommendation {
   title: string;
   category: string;
   address: string;
-  mapx: number;
-  mapy: number;
+  mapx: string; // API 응답이 문자열이므로 string으로 받습니다.
+  mapy: string;
 }
 
 export default function Home() {
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
-  const [map, setMap] = useState<naver.maps.Map | null>(null);
-  const [marker, setMarker] = useState<naver.maps.Marker | null>(null);
-  const [loading, setLoading] = useState(false);
   const mapElement = useRef<HTMLDivElement | null>(null);
+  const mapInstance = useRef<naver.maps.Map | null>(null); // map 객체를 ref로 관리
+  const markerInstance = useRef<naver.maps.Marker | null>(null); // marker 객체를 ref로 관리
+  const [loading, setLoading] = useState(false);
 
+  // 지도 초기화 로직
   useEffect(() => {
-    // 1. 이미 스크립트가 로드되었거나, naver 객체가 이미 존재하면 중복 실행 방지
-    if (window.naver && window.naver.maps) {
-        // 지도를 즉시 초기화
-        if (mapElement.current && !map) {
-            const mapOptions = {
-                center: new window.naver.maps.LatLng(37.3595704, 127.105399),
-                zoom: 15,
-            };
-            const mapInstance = new window.naver.maps.Map(mapElement.current, mapOptions);
-            setMap(mapInstance);
-        }
-        return;
-    }
-
-    // 2. 스크립트 태그 생성
     const script = document.createElement('script');
-    
-    // 3. (가장 중요!) ncpClientId를 ncpKeyId로 변경
-    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_CLIENT_ID}`;
-    
+    // Maps API 키를 사용합니다.
+    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID}`;
     script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-
-    // 4. 스크립트 로드 완료 후 실행될 콜백 함수
     script.onload = () => {
-        if (mapElement.current) {
-            const mapOptions = {
-                center: new window.naver.maps.LatLng(37.3595704, 127.105399),
-                zoom: 15,
-            };
-            const mapInstance = new window.naver.maps.Map(mapElement.current, mapOptions);
-            setMap(mapInstance);
-        }
+      if (mapElement.current && !mapInstance.current) {
+        const mapOptions = {
+          center: new window.naver.maps.LatLng(37.5665, 126.9780), // 서울 시청 기본 위치
+          zoom: 15,
+        };
+        mapInstance.current = new window.naver.maps.Map(mapElement.current, mapOptions);
+      }
     };
-}, [map]); // map 상태가 변경될 때도 이 effect를 다시 확인할 수 있도록 추가
+    document.head.appendChild(script);
+  }, []);
 
+  // 추천 버튼 클릭 핸들러
   const handleRecommendClick = () => {
     setLoading(true);
-    if (marker) {
-      marker.setMap(null);
+    setRecommendation(null);
+    if (markerInstance.current) {
+      markerInstance.current.setMap(null);
     }
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
-      try {
-        const response = await fetch(`/api/recommend?lat=${latitude}&lng=${longitude}`);
-        const data = await response.json();
-        if (response.ok) {
-          setRecommendation(data);
-          if (map) {
-            const recommendedLatLng = new naver.maps.LatLng(data.mapy, data.mapx);
-            map.setCenter(recommendedLatLng);
-            const newMarker = new naver.maps.Marker({
-              position: recommendedLatLng,
-              map: map,
-            });
-            setMarker(newMarker);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        try {
+          // 1. 우리 백엔드 API에 현재 위치 좌표를 보내 맛집 추천 요청
+          const response = await fetch(`/api/recommend?lat=${latitude}&lng=${longitude}`);
+          const data: Recommendation = await response.json();
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch recommendation');
           }
-        } else {
-          console.error(data.error);
+
+          setRecommendation(data);
+          
+          if (mapInstance.current) {
+            // 2. 백엔드에서 받은 TM128 좌표를 위도/경도로 변환
+            const point = new window.naver.maps.Point(Number(data.mapx), Number(data.mapy));
+            const latlng = window.naver.maps.TransCoord.fromTM128ToLatLng(point);
+
+            // 3. 변환된 좌표로 지도의 중심을 이동하고 새로운 마커를 생성
+            mapInstance.current.setCenter(latlng);
+            markerInstance.current = new window.naver.maps.Marker({
+              position: latlng,
+              map: mapInstance.current,
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching recommendation:', error);
+          alert('맛집을 찾는 데 실패했습니다.');
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('Failed to fetch recommendation:', error);
-      } finally {
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        alert("위치 정보를 가져오는 데 실패했습니다. 위치 권한을 허용해주세요.");
         setLoading(false);
       }
-    }, (error) => {
-      console.error("Geolocation error:", error);
-      setLoading(false);
-    });
+    );
   };
 
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-4">
-      <div id="map" ref={mapElement} style={{ width: '100%', height: '400px', marginBottom: '20px' }}></div>
-      <Button onClick={handleRecommendClick} disabled={loading}>
-        {loading ? 'Searching...' : 'Get Lunch Recommendation'}
+    <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
+      <h1 className="text-3xl font-bold mb-4">오늘 뭐 먹지? 🤔</h1>
+      <div id="map" ref={mapElement} style={{ width: '100%', maxWidth: '800px', height: '400px', marginBottom: '20px', border: '1px solid #ccc' }}></div>
+      <Button onClick={handleRecommendClick} disabled={loading} size="lg">
+        {loading ? '주변 맛집 검색 중...' : '점심 메뉴 추천받기!'}
       </Button>
       {recommendation && (
         <Card className="mt-4 w-full max-w-md">
           <CardHeader>
-            <CardTitle>{recommendation.title}</CardTitle>
+            <CardTitle>{recommendation.title.replace(/<[^>]+>/g, "")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p><strong>Category:</strong> {recommendation.category}</p>
-            <p><strong>Address:</strong> {recommendation.address}</p>
+            <p><strong>카테고리:</strong> {recommendation.category}</p>
+            <p><strong>주소:</strong> {recommendation.address}</p>
           </CardContent>
         </Card>
       )}
