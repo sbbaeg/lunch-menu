@@ -21,10 +21,12 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
 
   // 지도 초기화 로직
-  useEffect(() => {
+useEffect(() => {
     const script = document.createElement('script');
-    // Maps API 키를 사용합니다.
-    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID}`;
+    
+    // (가장 중요!) URL 끝에 '&submodules=TransCoord'를 추가하여 좌표 변환 확장 기능을 함께 불러옵니다.
+    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID}&submodules=TransCoord`;
+    
     script.async = true;
     script.onload = () => {
       if (mapElement.current && !mapInstance.current) {
@@ -36,7 +38,7 @@ export default function Home() {
       }
     };
     document.head.appendChild(script);
-  }, []);
+}, []);
 
   // 추천 버튼 클릭 핸들러
   const handleRecommendClick = () => {
