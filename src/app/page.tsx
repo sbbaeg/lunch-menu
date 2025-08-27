@@ -20,22 +20,42 @@ export default function Home() {
   const mapElement = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    // 1. 이미 스크립트가 로드되었거나, naver 객체가 이미 존재하면 중복 실행 방지
+    if (window.naver && window.naver.maps) {
+        // 지도를 즉시 초기화
+        if (mapElement.current && !map) {
+            const mapOptions = {
+                center: new window.naver.maps.LatLng(37.3595704, 127.105399),
+                zoom: 15,
+            };
+            const mapInstance = new window.naver.maps.Map(mapElement.current, mapOptions);
+            setMap(mapInstance);
+        }
+        return;
+    }
+
+    // 2. 스크립트 태그 생성
     const script = document.createElement('script');
-    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${process.env.NEXT_PUBLIC_NAVER_CLIENT_ID}`;
+    
+    // 3. (가장 중요!) ncpClientId를 ncpKeyId로 변경
+    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_CLIENT_ID}`;
+    
     script.async = true;
+    script.defer = true;
     document.head.appendChild(script);
 
+    // 4. 스크립트 로드 완료 후 실행될 콜백 함수
     script.onload = () => {
-      if (mapElement.current) {
-        const mapOptions: naver.maps.MapOptions = {
-          center: new naver.maps.LatLng(37.3595704, 127.105399),
-          zoom: 15,
-        };
-        const mapInstance = new naver.maps.Map(mapElement.current, mapOptions);
-        setMap(mapInstance);
-      }
+        if (mapElement.current) {
+            const mapOptions = {
+                center: new window.naver.maps.LatLng(37.3595704, 127.105399),
+                zoom: 15,
+            };
+            const mapInstance = new window.naver.maps.Map(mapElement.current, mapOptions);
+            setMap(mapInstance);
+        }
     };
-  }, []);
+}, [map]); // map 상태가 변경될 때도 이 effect를 다시 확인할 수 있도록 추가
 
   const handleRecommendClick = () => {
     setLoading(true);
