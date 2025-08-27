@@ -45,7 +45,7 @@ export default function Home() {
     navigator.geolocation.getCurrentPosition(async (position) => {
       const { latitude, longitude } = position.coords;
       try {
-        const response = await fetch(`/api/recommend?lat=${latitude}&lon=${longitude}`);
+        const response = await fetch(`/api/recommend?lat=${latitude}&lng=${longitude}`);
         const data = await response.json();
         if (response.ok) {
           setRecommendation(data);
