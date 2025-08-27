@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const lat = searchParams.get('lat');
-  const lon = searchParams.get('lon');
+export async function GET() {
 
   // Note: The Naver Local Search API does not directly support searching by coordinates.
   // A generic query is used here. For a more location-specific search,
@@ -39,10 +36,8 @@ export async function GET(request: NextRequest) {
       title: randomRestaurant.title.replace(/<[^>]*>?/gm, ''),
       category: randomRestaurant.category,
       address: randomRestaurant.address,
-      coordinates: {
-        lat: randomRestaurant.mapy,
-        lon: randomRestaurant.mapx,
-      },
+      mapx: Number(randomRestaurant.mapx),
+      mapy: Number(randomRestaurant.mapy),
     };
 
     return NextResponse.json(result);

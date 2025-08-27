@@ -14,15 +14,14 @@ interface Recommendation {
   title: string;
   category: string;
   address: string;
-  coordinates: {
-    lat: string;
-    lon: string;
-  };
+  mapx: number;
+  mapy: number;
 }
 
 export default function Home() {
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [map, setMap] = useState<any>(null);
+  const [marker, setMarker] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const mapElement = useRef(null);
 
@@ -46,6 +45,9 @@ export default function Home() {
 
   const handleRecommendClick = () => {
     setLoading(true);
+    if (marker) {
+      marker.setMap(null);
+    }
     navigator.geolocation.getCurrentPosition(async (position) => {
       const { latitude, longitude } = position.coords;
       try {
@@ -54,12 +56,13 @@ export default function Home() {
         if (response.ok) {
           setRecommendation(data);
           if (map) {
-            const recommendedLatLng = new window.naver.maps.LatLng(data.coordinates.lat, data.coordinates.lon);
+            const recommendedLatLng = new window.naver.maps.LatLng(data.mapy, data.mapx);
             map.setCenter(recommendedLatLng);
-            new window.naver.maps.Marker({
+            const newMarker = new window.naver.maps.Marker({
               position: recommendedLatLng,
               map: map,
             });
+            setMarker(newMarker);
           }
         } else {
           console.error(data.error);
