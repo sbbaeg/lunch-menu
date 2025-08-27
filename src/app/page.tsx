@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import '@/types/index.d';
+// (수정!) 더 이상 필요 없는 타입 정의 파일 import를 제거합니다.
+// import '@/types/index.d';
 
+// (수정!) navermaps 타입을 직접 import 합니다.
 interface NaverRestaurantItem {
   title: string;
   category: string;
@@ -28,7 +30,10 @@ export default function Home() {
   useEffect(() => {
     const scriptId = 'naver-maps-script';
     if (document.getElementById(scriptId)) {
-      setIsMapReady(true);
+        // window.naver 객체가 있는지 확실히 확인하고 isMapReady를 설정합니다.
+        if (window.naver && window.naver.maps) {
+            setIsMapReady(true);
+        }
       return;
     }
   
@@ -40,16 +45,20 @@ export default function Home() {
     document.head.appendChild(script);
 
     script.onload = () => {
-      if (mapElement.current && !mapInstance.current) {
-        const mapOptions = {
-          center: new window.naver.maps.LatLng(37.5665, 126.9780),
-          zoom: 15,
-        };
-        mapInstance.current = new window.naver.maps.Map(mapElement.current, mapOptions);
-        setIsMapReady(true);
-      }
+        setIsMapReady(true); // 스크립트가 로드되면 무조건 준비 상태로 변경
     };
   }, []);
+
+  // 지도가 준비되면 인스턴스를 생성하는 별도의 useEffect
+  useEffect(() => {
+    if (isMapReady && mapElement.current && !mapInstance.current) {
+      const mapOptions = {
+        center: new window.naver.maps.LatLng(37.5665, 126.9780),
+        zoom: 15,
+      };
+      mapInstance.current = new window.naver.maps.Map(mapElement.current, mapOptions);
+    }
+  }, [isMapReady]);
 
   const handleRecommendClick = () => {
     setLoading(true);
@@ -68,14 +77,12 @@ export default function Home() {
           }
           const data: NaverSearchResponse = await response.json();
 
-          // (수정!) 프론트엔드에서 맛집 목록을 받았는지 확인
           if (!data.items || data.items.length === 0) {
             alert('주변에 추천할 맛집을 찾지 못했어요!');
             setLoading(false);
             return;
           }
-
-          // (수정!) 프론트엔드에서 랜덤 선택
+          
           const randomIndex = Math.floor(Math.random() * data.items.length);
           const randomRestaurant = data.items[randomIndex];
           setRecommendation(randomRestaurant);
