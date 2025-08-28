@@ -19,13 +19,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Latitude and longitude are required' }, { status: 400 });
   }
 
-  // 네이버 클라우드 플랫폼의 Places API 엔드포인트
-  const apiUrl = `https://naveropenapi.apigw.ntruss.com/map-place/v1/search?query=맛집&coordinate=${lng},${lat}`;
+  // (수정!) 검색어를 '음식점'으로 변경하여 검색 범위를 넓힙니다.
+  const apiUrl = `https://naveropenapi.apigw.ntruss.com/map-place/v1/search?query=음식점&coordinate=${lng},${lat}`;
 
   try {
     const response = await fetch(apiUrl, {
       headers: {
-        // (가장 중요!) Places API는 이 헤더 이름을 사용합니다.
         'X-NCP-APIGW-API-KEY-ID': process.env.NAVER_MAPS_CLIENT_ID!,
         'X-NCP-APIGW-API-KEY': process.env.NAVER_MAPS_CLIENT_SECRET!,
       },
@@ -41,8 +40,8 @@ export async function GET(request: Request) {
       title: place.name,
       category: place.category,
       address: place.road_address,
-      mapx: place.x, // 경도
-      mapy: place.y, // 위도
+      mapx: place.x,
+      mapy: place.y,
     }));
 
     return NextResponse.json({ items });
