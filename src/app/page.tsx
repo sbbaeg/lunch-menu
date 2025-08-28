@@ -27,9 +27,12 @@ export default function Home() {
   useEffect(() => {
     const scriptId = 'naver-maps-script';
     if (document.getElementById(scriptId)) {
-        if (window.naver && window.naver.maps) {
-            setIsMapReady(true);
-        }
+        const interval = setInterval(() => {
+            if (window.naver && window.naver.maps && window.naver.maps.TransCoord) {
+                clearInterval(interval);
+                setIsMapReady(true);
+            }
+        }, 100);
       return;
     }
   
@@ -41,7 +44,12 @@ export default function Home() {
     document.head.appendChild(script);
 
     script.onload = () => {
-        setIsMapReady(true);
+        const interval = setInterval(() => {
+            if (window.naver && window.naver.maps && window.naver.maps.TransCoord) {
+                clearInterval(interval);
+                setIsMapReady(true);
+            }
+        }, 100);
     };
   }, []);
 
