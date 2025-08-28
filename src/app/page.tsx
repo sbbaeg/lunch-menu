@@ -1,8 +1,11 @@
+// 파일 경로: src/app/page.tsx
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import '@/types/index.d';
 
 interface NaverRestaurantItem {
   title: string;
@@ -22,45 +25,45 @@ export default function Home() {
   const mapInstance = useRef<naver.maps.Map | null>(null);
   const markerInstance = useRef<naver.maps.Marker | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
 
   useEffect(() => {
     const scriptId = 'naver-maps-script';
-    if (document.getElementById(scriptId)) {
-      setIsScriptLoaded(true);
-      return;
-    }
 
-    const script = document.createElement('script');
-    script.id = scriptId;
-    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID}&submodules=TransCoord`;
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-
-    script.onload = () => {
-      setIsScriptLoaded(true);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isScriptLoaded) {
+    const initMap = () => {
       if (mapElement.current && !mapInstance.current) {
         const mapOptions = {
           center: new window.naver.maps.LatLng(37.5665, 126.9780),
           zoom: 15,
         };
         mapInstance.current = new window.naver.maps.Map(mapElement.current, mapOptions);
+        setIsMapReady(true);
       }
-      const interval = setInterval(() => {
-        if (window.naver && window.naver.maps && window.naver.maps.TransCoord) {
-          clearInterval(interval);
-          setIsMapReady(true);
-        }
-      }, 100);
+    };
+
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID}&submodules=TransCoord`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.naver && window.naver.maps) {
+        window.naver.maps.onJSContentLoaded = initMap;
+      }
+    };
+
+    if (!document.getElementById(scriptId)) {
+      document.head.appendChild(script);
+    } else if (window.naver && window.naver.maps) {
+        initMap();
     }
-  }, [isScriptLoaded]);
+
+
+    return () => {
+      // cleanup: unmount될 때 script.onload를 null로 설정
+      script.onload = null;
+    };
+  }, []);
 
   const handleRecommendClick = () => {
     setLoading(true);
@@ -75,7 +78,7 @@ export default function Home() {
         try {
           const response = await fetch(`/api/recommend?lat=${latitude}&lng=${longitude}`);
           if (!response.ok) {
-            throw new Error(`API call failed with status: ${response.status}`);
+            throw new Error(`API call failed: ${response.status}`);
           }
           const data: NaverSearchResponse = await response.json();
 
@@ -84,12 +87,12 @@ export default function Home() {
             setLoading(false);
             return;
           }
-          
+
           const randomIndex = Math.floor(Math.random() * data.items.length);
           const randomRestaurant = data.items[randomIndex];
           setRecommendation(randomRestaurant);
-          
-          if (mapInstance.current) {
+
+          if (mapInstance.current && window.naver.maps.TransCoord) {
             const point = new window.naver.maps.Point(Number(randomRestaurant.mapx), Number(randomRestaurant.mapy));
             const latlng = window.naver.maps.TransCoord.fromTM128ToLatLng(point);
 
@@ -101,14 +104,14 @@ export default function Home() {
           }
         } catch (error) {
           console.error('Error fetching recommendation:', error);
-          alert('맛집을 찾는 중 실패했습니다.');
+          alert('맛집을 찾는 데 실패했습니다.');
         } finally {
           setLoading(false);
         }
       },
       (error) => {
         console.error("Geolocation error:", error);
-        alert("위치 정보를 가져오는 중 실패했습니다. 위치 권한을 허용해주세요.");
+        alert("위치 정보를 가져오는 데 실패했습니다. 위치 권한을 허용해주세요.");
         setLoading(false);
       }
     );
@@ -116,7 +119,7 @@ export default function Home() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
-      <h1 className="text-3xl font-bold mb-4">오늘 뭐 먹지?</h1>
+      <h1 className="text-3xl font-bold mb-4">오늘 뭐 먹지? 🤔</h1>
       <div id="map" ref={mapElement} style={{ width: '100%', maxWidth: '800px', height: '400px', marginBottom: '20px', border: '1px solid #ccc' }}></div>
       <Button onClick={handleRecommendClick} disabled={loading || !isMapReady} size="lg">
         {loading ? '주변 맛집 검색 중...' : (isMapReady ? '점심 메뉴 추천받기!' : '지도 로딩 중...')}
