@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import '@/types/index.d';
 
 // (수정!) 응답 데이터 타입 이름 변경
 interface PlaceItem {
