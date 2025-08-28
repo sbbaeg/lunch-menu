@@ -28,32 +28,41 @@ export default function Home() {
   const [isMapReady, setIsMapReady] = useState(false);
 
   useEffect(() => {
-    const initMap = () => {
-      if (mapElement.current && !mapInstance.current) {
-        const mapOptions = {
-          center: new window.naver.maps.LatLng(37.5665, 126.9780),
-          zoom: 15,
-        };
-        mapInstance.current = new window.naver.maps.Map(mapElement.current, mapOptions);
-        setIsMapReady(true);
-      }
-    };
-
-    if (window.naver && window.naver.maps) {
-      // If the script is already loaded, just initialize the map.
-      initMap();
-    } else {
-      const script = document.createElement('script');
-      script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=jzty5iocb4&submodules=TransCoord`;
-      script.async = true;
-      script.onload = () => {
+    const scriptId = 'naver-maps-script';
+    if (document.getElementById(scriptId)) {
         if (window.naver && window.naver.maps) {
-          window.naver.maps.onJSContentLoaded = initMap;
+            window.naver.maps.onJSContentLoaded = () => {
+                setIsMapReady(true);
+            }
         }
-      };
-      document.head.appendChild(script);
+      return;
     }
+  
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID}&submodules=TransCoord`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+    script.onload = () => {
+        if(window.naver && window.naver.maps){
+            window.naver.maps.onJSContentLoaded = () => {
+                setIsMapReady(true);
+            };
+        }
+    };
   }, []);
+
+  useEffect(() => {
+    if (isMapReady && mapElement.current && !mapInstance.current) {
+      const mapOptions = {
+        center: new window.naver.maps.LatLng(37.5665, 126.9780),
+        zoom: 15,
+      };
+      mapInstance.current = new window.naver.maps.Map(mapElement.current, mapOptions);
+    }
+  }, [isMapReady]);
 
   const handleRecommendClick = () => {
     setLoading(true);

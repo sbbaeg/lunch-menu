@@ -18,8 +18,8 @@ export async function GET(request: Request) {
       `https://openapi.naver.com/v1/search/local.json?query=맛집&display=10&sort=random&longitude=${lng}&latitude=${lat}&radius=2000`, // 반경 2km
       {
         headers: {
-          'X-Naver-Client-Id': 'AL4pNWuKiNr7_jbk29_W',
-          'X-Naver-Client-Secret': 'nG7lC0EVi0',
+          'X-Naver-Client-Id': process.env.NAVER_SEARCH_CLIENT_ID!,
+          'X-Naver-Client-Secret': process.env.NAVER_SEARCH_CLIENT_SECRET!,
         },
       }
     );
