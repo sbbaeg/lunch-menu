@@ -22,20 +22,16 @@ export default function Home() {
   const mapInstance = useRef<naver.maps.Map | null>(null);
   const markerInstance = useRef<naver.maps.Marker | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isScriptLoaded, setIsScriptLoaded] = useState(false);
   const [isMapReady, setIsMapReady] = useState(false);
 
   useEffect(() => {
     const scriptId = 'naver-maps-script';
     if (document.getElementById(scriptId)) {
-        const interval = setInterval(() => {
-            if (window.naver && window.naver.maps && window.naver.maps.TransCoord) {
-                clearInterval(interval);
-                setIsMapReady(true);
-            }
-        }, 100);
+      setIsScriptLoaded(true);
       return;
     }
-  
+
     const script = document.createElement('script');
     script.id = scriptId;
     script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID}&submodules=TransCoord`;
@@ -44,24 +40,27 @@ export default function Home() {
     document.head.appendChild(script);
 
     script.onload = () => {
-        const interval = setInterval(() => {
-            if (window.naver && window.naver.maps && window.naver.maps.TransCoord) {
-                clearInterval(interval);
-                setIsMapReady(true);
-            }
-        }, 100);
+      setIsScriptLoaded(true);
     };
   }, []);
 
   useEffect(() => {
-    if (isMapReady && mapElement.current && !mapInstance.current) {
-      const mapOptions = {
-        center: new window.naver.maps.LatLng(37.5665, 126.9780),
-        zoom: 15,
-      };
-      mapInstance.current = new window.naver.maps.Map(mapElement.current, mapOptions);
+    if (isScriptLoaded) {
+      if (mapElement.current && !mapInstance.current) {
+        const mapOptions = {
+          center: new window.naver.maps.LatLng(37.5665, 126.9780),
+          zoom: 15,
+        };
+        mapInstance.current = new window.naver.maps.Map(mapElement.current, mapOptions);
+      }
+      const interval = setInterval(() => {
+        if (window.naver && window.naver.maps && window.naver.maps.TransCoord) {
+          clearInterval(interval);
+          setIsMapReady(true);
+        }
+      }, 100);
     }
-  }, [isMapReady]);
+  }, [isScriptLoaded]);
 
   const handleRecommendClick = () => {
     setLoading(true);
