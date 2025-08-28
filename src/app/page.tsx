@@ -28,8 +28,6 @@ export default function Home() {
   const [isMapReady, setIsMapReady] = useState(false);
 
   useEffect(() => {
-    const scriptId = 'naver-maps-script';
-
     const initMap = () => {
       if (mapElement.current && !mapInstance.current) {
         const mapOptions = {
@@ -41,28 +39,20 @@ export default function Home() {
       }
     };
 
-    const script = document.createElement('script');
-    script.id = scriptId;
-    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID}&submodules=TransCoord`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      if (window.naver && window.naver.maps) {
-        window.naver.maps.onJSContentLoaded = initMap;
-      }
-    };
-
-    if (!document.getElementById(scriptId)) {
+    if (window.naver && window.naver.maps) {
+      // If the script is already loaded, just initialize the map.
+      initMap();
+    } else {
+      const script = document.createElement('script');
+      script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID}&submodules=TransCoord`;
+      script.async = true;
+      script.onload = () => {
+        if (window.naver && window.naver.maps) {
+          window.naver.maps.onJSContentLoaded = initMap;
+        }
+      };
       document.head.appendChild(script);
-    } else if (window.naver && window.naver.maps) {
-        initMap();
     }
-
-
-    return () => {
-      // cleanup: unmount될 때 script.onload를 null로 설정
-      script.onload = null;
-    };
   }, []);
 
   const handleRecommendClick = () => {
