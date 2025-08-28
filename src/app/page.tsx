@@ -1,26 +1,25 @@
-// 파일 경로: src/app/page.tsx
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import '@/types/index.d';
 
-
-interface NaverRestaurantItem {
+// (수정!) 응답 데이터 타입 이름 변경
+interface PlaceItem {
   title: string;
   category: string;
   address: string;
-  mapx: string;
-  mapy: string;
+  mapx: string; // 경도
+  mapy: string; // 위도
 }
 
-interface NaverSearchResponse {
-  items: NaverRestaurantItem[];
+interface ApiResponse {
+  items: PlaceItem[];
 }
 
 export default function Home() {
-  const [recommendation, setRecommendation] = useState<NaverRestaurantItem | null>(null);
+  const [recommendation, setRecommendation] = useState<PlaceItem | null>(null);
   const mapElement = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<naver.maps.Map | null>(null);
   const markerInstance = useRef<naver.maps.Marker | null>(null);
@@ -30,27 +29,22 @@ export default function Home() {
   useEffect(() => {
     const scriptId = 'naver-maps-script';
     if (document.getElementById(scriptId)) {
-        if (window.naver && window.naver.maps) {
-            window.naver.maps.onJSContentLoaded = () => {
-                setIsMapReady(true);
-            }
-        }
+      if (window.naver && window.naver.maps) {
+        setIsMapReady(true);
+      }
       return;
     }
-  
+
     const script = document.createElement('script');
     script.id = scriptId;
-    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID}&submodules=TransCoord`;
+    // (수정!) 더 이상 submodules가 필요 없으므로 URL을 정리합니다.
+    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID}`;
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
 
     script.onload = () => {
-        if(window.naver && window.naver.maps){
-            window.naver.maps.onJSContentLoaded = () => {
-                setIsMapReady(true);
-            };
-        }
+      setIsMapReady(true);
     };
   }, []);
 
@@ -79,7 +73,7 @@ export default function Home() {
           if (!response.ok) {
             throw new Error(`API call failed: ${response.status}`);
           }
-          const data: NaverSearchResponse = await response.json();
+          const data: ApiResponse = await response.json();
 
           if (!data.items || data.items.length === 0) {
             alert('주변에 추천할 맛집을 찾지 못했어요!');
@@ -91,9 +85,12 @@ export default function Home() {
           const randomRestaurant = data.items[randomIndex];
           setRecommendation(randomRestaurant);
 
-          if (mapInstance.current && window.naver.maps.TransCoord) {
-            const point = new window.naver.maps.Point(Number(randomRestaurant.mapx), Number(randomRestaurant.mapy));
-            const latlng = window.naver.maps.TransCoord.fromTM128ToLatLng(point);
+          if (mapInstance.current) {
+            // (수정!) 좌표 변환 없이, 받은 위도(mapy)/경도(mapx)를 바로 사용합니다.
+            const latlng = new window.naver.maps.LatLng(
+              Number(randomRestaurant.mapy),
+              Number(randomRestaurant.mapx)
+            );
 
             mapInstance.current.setCenter(latlng);
             markerInstance.current = new window.naver.maps.Marker({
@@ -118,7 +115,7 @@ export default function Home() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
-      <h1 className="text-3xl font-bold mb-4">오늘 뭐 먹지? 🤔</h1>
+      <h1 className="text-3xl font-bold mb-4">오늘 뭐 먹지? (feat.naver)</h1>
       <div id="map" ref={mapElement} style={{ width: '100%', maxWidth: '800px', height: '400px', marginBottom: '20px', border: '1px solid #ccc' }}></div>
       <Button onClick={handleRecommendClick} disabled={loading || !isMapReady} size="lg">
         {loading ? '주변 맛집 검색 중...' : (isMapReady ? '점심 메뉴 추천받기!' : '지도 로딩 중...')}
