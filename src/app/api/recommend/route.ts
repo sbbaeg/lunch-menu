@@ -19,10 +19,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Latitude and longitude are required' }, { status: 400 });
   }
 
-  // (수정!) 검색어를 '음식점'으로 변경하여 검색 범위를 넓힙니다.
   const apiUrl = `https://naveropenapi.apigw.ntruss.com/map-place/v1/search?query=음식점&coordinate=${lng},${lat}`;
 
   try {
+    // --- 로그 추가 1: 어떤 주소로 요청하는지 확인 ---
+    console.log('Requesting to Naver API:', apiUrl);
+
     const response = await fetch(apiUrl, {
       headers: {
         'X-NCP-APIGW-API-KEY-ID': process.env.NAVER_MAPS_CLIENT_ID!,
@@ -32,7 +34,11 @@ export async function GET(request: Request) {
 
     const data = await response.json();
 
+    // --- 로그 추가 2: 네이버로부터 받은 응답 데이터 전체를 확인 ---
+    console.log('Received from Naver API:', JSON.stringify(data, null, 2));
+
     if (!data.places || data.places.length === 0) {
+      console.log('No places found in the response.');
       return NextResponse.json({ items: [] });
     }
 
