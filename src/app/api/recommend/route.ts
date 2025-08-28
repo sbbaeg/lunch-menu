@@ -11,25 +11,36 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Latitude and longitude are required' }, { status: 400 });
   }
 
-  try {
-    // (수정!) Reverse Geocoding 없이 바로 지역 검색 API 호출
-    const localRes = await fetch(
-      // (수정!) URL에 좌표(longitude, latitude)와 반경(radius) 파라미터 추가
-      `https://openapi.naver.com/v1/search/local.json?query=맛집&display=10&sort=random&longitude=${lng}&latitude=${lat}&radius=2000`, // 반경 2km
-      {
-        headers: {
-          'X-Naver-Client-Id': process.env.NAVER_SEARCH_CLIENT_ID!,
-          'X-Naver-Client-Secret': process.env.NAVER_SEARCH_CLIENT_SECRET!,
-        },
-      }
-    );
-    const localData = await localRes.json();
+  // (수정!) 네이버 클라우드 플랫폼의 Places API 엔드포인트 사용
+  const apiUrl = `https://naveropenapi.apigw.ntruss.com/map-place/v1/search?query=맛집&coordinate=${lng},${lat}`;
 
-    if (!localData.items || localData.items.length === 0) {
+  try {
+    const response = await fetch(apiUrl, {
+      headers: {
+        // (중요!) Places API는 Maps API 키를 사용합니다.
+        'X-NCP-APIGW-API-KEY-ID': process.env.NAVER_MAPS_CLIENT_ID!,
+        'X-NCP-APIGW-API-KEY': process.env.NAVER_MAPS_CLIENT_SECRET!,
+      },
+    });
+
+    const data = await response.json();
+
+    // Places API의 응답 형식은 'places' 배열입니다.
+    if (!data.places || data.places.length === 0) {
       return NextResponse.json({ items: [] });
     }
-    
-    return NextResponse.json(localData);
+
+    // (수정!) 응답 데이터 구조에 맞게 반환
+    // Places API는 표준 위경도(WGS84)를 반환하므로 좌표 변환이 필요 없습니다.
+    const items = data.places.map((place: any) => ({
+      title: place.name,
+      category: place.category,
+      address: place.road_address,
+      mapx: place.x, // 경도
+      mapy: place.y, // 위도
+    }));
+
+    return NextResponse.json({ items });
 
   } catch (error) {
     console.error('API Error:', error);
