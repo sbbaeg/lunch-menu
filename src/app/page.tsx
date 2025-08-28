@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // 타입 정의 파일은 tsconfig.json을 통해 전역으로 적용되므로 import가 필요 없습니다.
-// import '@/types/index.d';
 
 interface PlaceItem {
   title: string;
@@ -70,6 +69,13 @@ export default function Home() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
+
+        // (수정!) 맛집 검색 전에 지도를 현재 위치로 먼저 이동시킵니다.
+        if (mapInstance.current) {
+          const userLocation = new window.naver.maps.LatLng(latitude, longitude);
+          mapInstance.current.setCenter(userLocation);
+        }
+
         try {
           const response = await fetch(`/api/recommend?lat=${latitude}&lng=${longitude}`);
           if (!response.ok) {
@@ -78,7 +84,7 @@ export default function Home() {
           const data: ApiResponse = await response.json();
 
           if (!data.items || data.items.length === 0) {
-            alert('주변에 추천할 맛집을 찾지 못했어요!');
+            alert('주변에 추천할 음식점을 찾지 못했어요!');
             setLoading(false);
             return;
           }
@@ -92,8 +98,8 @@ export default function Home() {
               Number(randomRestaurant.mapy),
               Number(randomRestaurant.mapx)
             );
-
-            mapInstance.current.setCenter(latlng);
+            
+            // (수정!) 마커만 새로 추가합니다. (지도는 이미 이동함)
             markerInstance.current = new window.naver.maps.Marker({
               position: latlng,
               map: mapInstance.current,
@@ -101,7 +107,7 @@ export default function Home() {
           }
         } catch (error) {
           console.error('Error fetching recommendation:', error);
-          alert('맛집을 찾는 데 실패했습니다.');
+          alert('음식점을 찾는 데 실패했습니다.');
         } finally {
           setLoading(false);
         }
@@ -116,10 +122,10 @@ export default function Home() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
-      <h1 className="text-3xl font-bold mb-4">오늘 뭐 먹지? 🤔</h1>
+      <h1 className="text-3xl font-bold mb-4">오늘 뭐 먹지? (feat.naver)</h1>
       <div id="map" ref={mapElement} style={{ width: '100%', maxWidth: '800px', height: '400px', marginBottom: '20px', border: '1px solid #ccc' }}></div>
       <Button onClick={handleRecommendClick} disabled={loading || !isMapReady} size="lg">
-        {loading ? '주변 맛집 검색 중...' : (isMapReady ? '점심 메뉴 추천받기!' : '지도 로딩 중...')}
+        {loading ? '주변 음식점 검색 중...' : (isMapReady ? '점심 메뉴 추천받기!' : '지도 로딩 중...')}
       </Button>
       {recommendation && (
         <Card className="mt-4 w-full max-w-md">
