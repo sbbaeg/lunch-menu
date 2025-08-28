@@ -44,7 +44,7 @@ export default function Home() {
       initMap();
     } else {
       const script = document.createElement('script');
-      script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${jzty5iocb4}&submodules=TransCoord`;
+      script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=jzty5iocb4&submodules=TransCoord`;
       script.async = true;
       script.onload = () => {
         if (window.naver && window.naver.maps) {
