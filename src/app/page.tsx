@@ -1,135 +1,56 @@
+// 파일 경로: src/app/page.tsx
+
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// (수정!) 더 이상 필요 없는 타입 정의 파일 import를 제거합니다.
-// import '@/types/index.d';
+import { useEffect } from 'react';
 
-// (수정!) navermaps 타입을 직접 import 합니다.
-interface NaverRestaurantItem {
-  title: string;
-  category: string;
-  address: string;
-  mapx: string;
-  mapy: string;
-}
-
-interface NaverSearchResponse {
-  items: NaverRestaurantItem[];
-}
+// (중요!) 여기에 본인의 Maps Client ID를 직접 입력해주세요.
+const NAVER_MAPS_CLIENT_ID = '여기에 Maps Client ID 입력';
 
 export default function Home() {
-  const [recommendation, setRecommendation] = useState<NaverRestaurantItem | null>(null);
-  const mapElement = useRef<HTMLDivElement | null>(null);
-  const mapInstance = useRef<naver.maps.Map | null>(null);
-  const markerInstance = useRef<naver.maps.Marker | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [isMapReady, setIsMapReady] = useState(false);
-
   useEffect(() => {
-    const scriptId = 'naver-maps-script';
-    if (document.getElementById(scriptId)) {
-        // window.naver 객체가 있는지 확실히 확인하고 isMapReady를 설정합니다.
-        if (window.naver && window.naver.maps) {
-            setIsMapReady(true);
-        }
+    // 스크립트 중복 로드 방지
+    if (document.getElementById('naver-maps-script')) {
       return;
     }
-  
+
     const script = document.createElement('script');
-    script.id = scriptId;
-    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${process.env.NEXT_PUBLIC_NAVER_MAPS_CLIENT_ID}&submodules=TransCoord`;
+    script.id = 'naver-maps-script';
+    script.src = `https://openapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${NAVER_MAPS_CLIENT_ID}&submodules=TransCoord`;
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
 
+    // (수정!) 스크립트 로드가 완료된 후, 지도 관련 모든 로직을 실행합니다.
     script.onload = () => {
-        setIsMapReady(true); // 스크립트가 로드되면 무조건 준비 상태로 변경
+      console.log('Naver Maps script loaded successfully.');
+      
+      // window.naver 객체가 있는지 다시 한번 확인합니다.
+      if (!window.naver || !window.naver.maps) {
+        console.error('Naver Maps API did not load correctly.');
+        alert('지도 API 로딩에 실패했습니다.');
+        return;
+      }
+
+      // 테스트용 TM128 좌표 (강남역 부근)
+      const tm128 = new window.naver.maps.Point(315035.5, 544256.5);
+
+      try {
+        // 좌표 변환 기능 테스트
+        const latlng = window.naver.maps.TransCoord.fromTM128ToLatLng(tm128);
+        console.log('Coordinate conversion successful:', latlng);
+        alert('좌표 변환 성공! 위도: ' + latlng.y + ', 경도: ' + latlng.x);
+      } catch (error) {
+        console.error('Coordinate conversion failed:', error);
+        alert('좌표 변환 실패! 콘솔을 확인하세요.');
+      }
     };
   }, []);
 
-  // 지도가 준비되면 인스턴스를 생성하는 별도의 useEffect
-  useEffect(() => {
-    if (isMapReady && mapElement.current && !mapInstance.current) {
-      const mapOptions = {
-        center: new window.naver.maps.LatLng(37.5665, 126.9780),
-        zoom: 15,
-      };
-      mapInstance.current = new window.naver.maps.Map(mapElement.current, mapOptions);
-    }
-  }, [isMapReady]);
-
-  const handleRecommendClick = () => {
-    setLoading(true);
-    setRecommendation(null);
-    if (markerInstance.current) {
-      markerInstance.current.setMap(null);
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          const response = await fetch(`/api/recommend?lat=${latitude}&lng=${longitude}`);
-          if (!response.ok) {
-            throw new Error(`API call failed with status: ${response.status}`);
-          }
-          const data: NaverSearchResponse = await response.json();
-
-          if (!data.items || data.items.length === 0) {
-            alert('주변에 추천할 맛집을 찾지 못했어요!');
-            setLoading(false);
-            return;
-          }
-          
-          const randomIndex = Math.floor(Math.random() * data.items.length);
-          const randomRestaurant = data.items[randomIndex];
-          setRecommendation(randomRestaurant);
-          
-          if (mapInstance.current) {
-            const point = new window.naver.maps.Point(Number(randomRestaurant.mapx), Number(randomRestaurant.mapy));
-            const latlng = window.naver.maps.TransCoord.fromTM128ToLatLng(point);
-
-            mapInstance.current.setCenter(latlng);
-            markerInstance.current = new window.naver.maps.Marker({
-              position: latlng,
-              map: mapInstance.current,
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching recommendation:', error);
-          alert('맛집을 찾는 데 실패했습니다.');
-        } finally {
-          setLoading(false);
-        }
-      },
-      (error) => {
-        console.error("Geolocation error:", error);
-        alert("위치 정보를 가져오는 데 실패했습니다. 위치 권한을 허용해주세요.");
-        setLoading(false);
-      }
-    );
-  };
-
   return (
-    <main className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-50">
-      <h1 className="text-3xl font-bold mb-4">오늘 뭐 먹지?</h1>
-      <div id="map" ref={mapElement} style={{ width: '100%', maxWidth: '800px', height: '400px', marginBottom: '20px', border: '1px solid #ccc' }}></div>
-      <Button onClick={handleRecommendClick} disabled={loading || !isMapReady} size="lg">
-        {loading ? '주변 맛집 검색 중...' : (isMapReady ? '점심 메뉴 추천받기!' : '지도 로딩 중...')}
-      </Button>
-      {recommendation && (
-        <Card className="mt-4 w-full max-w-md">
-          <CardHeader>
-            <CardTitle>{recommendation.title.replace(/<[^>]+>/g, "")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p><strong>카테고리:</strong> {recommendation.category}</p>
-            <p><strong>주소:</strong> {recommendation.address}</p>
-          </CardContent>
-        </Card>
-      )}
+    <main>
+      <h1>Naver Maps API Test Page</h1>
+      <p>F12를 눌러 콘솔 로그를 확인하세요.</p>
     </main>
   );
 }
